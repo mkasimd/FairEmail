@@ -55,6 +55,12 @@ import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.zip.UnsupportedZipFeatureException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.james.jdkim.DKIMVerifier;
+import org.apache.james.jdkim.api.Headers;
+import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
+import org.apache.james.jdkim.api.SignatureRecord;
+import org.apache.james.jdkim.exceptions.PermFailException;
+import org.apache.james.jdkim.exceptions.TempFailException;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -1868,6 +1874,120 @@ public class MessageHelper {
         }
 
         return true;
+    }
+
+    DKIMResult verifyDKIM(Context context) throws MessagingException {
+        ensureHeaders();
+
+        try {
+            ObjectHolder<Boolean> strict = new ObjectHolder<>(false);
+            // https://datatracker.ietf.org/doc/html/rfc6376/
+            DKIMVerifier jdkim = new DKIMVerifier(new PublicKeyRecordRetriever() {
+                @Override
+                public List<String> getRecords(CharSequence methodAndOptions, CharSequence selector, CharSequence token)
+                        throws TempFailException, PermFailException {
+                    if (methodAndOptions == null ||
+                            !"dns/txt".equalsIgnoreCase(methodAndOptions.toString()))
+                        throw new PermFailException("Query method=" + methodAndOptions);
+
+                    try {
+                        String query = selector + "._domainkey." + token;
+                        DnsHelper.DnsRecord[] records = DnsHelper.lookup(context, query, "txt");
+                        List<String> result = new ArrayList<>();
+                        for (DnsHelper.DnsRecord record : records) {
+                            Log.i("DKIM query=" + record.name);
+                            result.add(record.name);
+                            if (record.name.toLowerCase(Locale.ROOT).contains("adkim=s"))
+                                strict.value = true;
+                        }
+                        return result;
+                    } catch (Exception ex) {
+                        Log.w(ex);
+                        throw new PermFailException("dns/lookup", ex);
+                    }
+                }
+            });
+
+            List<SignatureRecord> records = jdkim.verify(new Headers() {
+                @Override
+                public List<String> getFields() {
+                    Log.e("DKIM getFields");
+                    throw new IllegalArgumentException("getFields");
+                }
+
+                @Override
+                public List<String> getFields(String name) {
+                    try {
+                        List<String> result = new ArrayList<>();
+                        String[] headers = imessage.getHeader(name);
+                        if (headers != null)
+                            for (String header : headers)
+                                result.add(name + ": " + header);
+                        return result;
+                    } catch (MessagingException ex) {
+                        Log.e(ex);
+                        return new ArrayList<>();
+                    }
+                }
+            }, imessage.getRawInputStream());
+
+            if (records == null || records.size() == 0)
+                return new DKIMResult(null, null);
+
+            boolean aligned = false;
+            for (SignatureRecord record : records) {
+                String hash = record.getHashAlgo().toString();
+                if ("sha-1".equalsIgnoreCase(hash))
+                    throw new PermFailException("Weak hash=" + hash);
+                if (!"sha-256".equalsIgnoreCase(hash))
+                    Log.w("DKIM hash=" + hash);
+
+                String domain = record.getDToken().toString().toLowerCase(Locale.ROOT);
+                Log.i("DKIM domain=" + domain);
+
+                List<Address> addresses = new ArrayList<>();
+                Address[] ret = getReturnPath(); // RFC5321.MailFrom
+                if (ret != null)
+                    addresses.addAll(Arrays.asList(ret));
+                Address[] from = getFrom(); // RFC5322.From
+                if (from != null)
+                    addresses.addAll(Arrays.asList(from));
+
+                for (Address address : addresses) {
+                    String email = ((InternetAddress) address).getAddress();
+                    if (TextUtils.isEmpty(email))
+                        continue;
+
+                    String edomain = UriHelper.getEmailDomain(email.toLowerCase(Locale.ROOT));
+                    String p1 = UriHelper.getParentDomain(context, domain);
+                    String p2 = UriHelper.getParentDomain(context, edomain);
+                    if (strict.value ? domain.equals(edomain) : p1.equals(p2))
+                        aligned = true;
+
+                    Log.i("DKIM edomain=" + edomain + " aligned=" + aligned);
+                    if (aligned)
+                        return new DKIMResult(true, null);
+                }
+            }
+
+            return new DKIMResult(aligned, null);
+        } catch (Throwable ex) {
+            Log.e("DKIM", ex);
+            if (ex instanceof PermFailException)
+                return new DKIMResult(false, "DKIM: " + ex.getMessage());
+            else
+                return new DKIMResult(null, Log.formatThrowable(ex, false));
+        }
+    }
+
+    class DKIMResult {
+        Boolean verified;
+        String warning;
+
+        DKIMResult(Boolean result, String warning) {
+            this.verified = result;
+            this.warning = warning;
+        }
     }
 
     Address[] getMailFrom(String[] headers) {

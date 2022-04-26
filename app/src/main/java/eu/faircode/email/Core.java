@@ -2761,6 +2761,7 @@ class Core {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean sync_quick_pop = prefs.getBoolean("sync_quick_pop", true);
         boolean notify_known = prefs.getBoolean("notify_known", false);
+        boolean dkim_verify = prefs.getBoolean("dkim_verify", false);
         boolean download_eml = prefs.getBoolean("download_eml", false);
         boolean download_plain = prefs.getBoolean("download_plain", false);
         boolean pro = ActivityBilling.isPro(context);
@@ -2991,6 +2992,12 @@ class Core {
                         if (message.spf == null && helper.getSPF())
                             message.spf = true;
                         message.dmarc = MessageHelper.getAuthentication("dmarc", authentication);
+                        if (dkim_verify && (BuildConfig.DEBUG || !Boolean.TRUE.equals(message.dkim))) {
+                            MessageHelper.DKIMResult result = helper.verifyDKIM(context);
+                            message.dkim = result.verified;
+                            if (result.warning != null)
+                                message.warning = result.warning;
+                        }
                         message.smtp_from = helper.getMailFrom(authentication);
                         message.return_path = helper.getReturnPath();
                         message.submitter = helper.getSender();
@@ -3826,6 +3833,7 @@ class Core {
         boolean download_headers = prefs.getBoolean("download_headers", false);
         boolean download_plain = prefs.getBoolean("download_plain", false);
         boolean notify_known = prefs.getBoolean("notify_known", false);
+        boolean dkim_verify = prefs.getBoolean("dkim_verify", false);
         boolean experiments = prefs.getBoolean("experiments", false);
         boolean pro = ActivityBilling.isPro(context);
 
@@ -3985,6 +3993,12 @@ class Core {
             if (message.spf == null && helper.getSPF())
                 message.spf = true;
             message.dmarc = MessageHelper.getAuthentication("dmarc", authentication);
+            if (dkim_verify && (BuildConfig.DEBUG || !Boolean.TRUE.equals(message.dkim))) {
+                MessageHelper.DKIMResult result = helper.verifyDKIM(context);
+                message.dkim = result.verified;
+                if (result.warning != null)
+                    message.warning = result.warning;
+            }
             message.smtp_from = helper.getMailFrom(authentication);
             message.return_path = helper.getReturnPath();
             message.submitter = helper.getSender();

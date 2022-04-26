@@ -172,6 +172,7 @@ public class FragmentOptionsMisc extends FragmentBase implements SharedPreferenc
     private SwitchCompat swIdleDone;
     private SwitchCompat swLogarithmicBackoff;
     private SwitchCompat swExactAlarms;
+    private SwitchCompat swVerifyDkim;
     private SwitchCompat swInfra;
     private SwitchCompat swDupMsgId;
     private SwitchCompat swTestIab;
@@ -342,6 +343,7 @@ public class FragmentOptionsMisc extends FragmentBase implements SharedPreferenc
         swIdleDone = view.findViewById(R.id.swIdleDone);
         swLogarithmicBackoff = view.findViewById(R.id.swLogarithmicBackoff);
         swExactAlarms = view.findViewById(R.id.swExactAlarms);
+        swVerifyDkim = view.findViewById(R.id.swVerifyDkim);
         swInfra = view.findViewById(R.id.swInfra);
         swDupMsgId = view.findViewById(R.id.swDupMsgId);
         swTestIab = view.findViewById(R.id.swTestIab);
@@ -1152,6 +1154,13 @@ public class FragmentOptionsMisc extends FragmentBase implements SharedPreferenc
             }
         });
 
+        swVerifyDkim.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+                prefs.edit().putBoolean("dkim_verify", checked).apply();
+            }
+        });
+
         swInfra.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
@@ -1752,6 +1761,7 @@ public class FragmentOptionsMisc extends FragmentBase implements SharedPreferenc
         swIdleDone.setChecked(prefs.getBoolean("idle_done", true));
         swLogarithmicBackoff.setChecked(prefs.getBoolean("logarithmic_backoff", true));
         swExactAlarms.setChecked(prefs.getBoolean("exact_alarms", true));
+        swVerifyDkim.setChecked(prefs.getBoolean("dkim_verify", false));
         swInfra.setChecked(prefs.getBoolean("infra", false));
         swDupMsgId.setChecked(prefs.getBoolean("dup_msgids", false));
         swTestIab.setChecked(prefs.getBoolean("test_iab", false));
