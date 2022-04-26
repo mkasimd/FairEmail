@@ -1934,6 +1934,14 @@ public class MessageHelper {
             if (records == null || records.size() == 0)
                 return new DKIMResult(null, null);
 
+            List<Address> addresses = new ArrayList<>();
+            Address[] ret = getReturnPath(); // RFC5321.MailFrom
+            if (ret != null)
+                addresses.addAll(Arrays.asList(ret));
+            Address[] from = getFrom(); // RFC5322.From
+            if (from != null)
+                addresses.addAll(Arrays.asList(from));
+
             boolean aligned = false;
             for (SignatureRecord record : records) {
                 String hash = record.getHashAlgo().toString();
@@ -1944,14 +1952,6 @@ public class MessageHelper {
 
                 String domain = record.getDToken().toString().toLowerCase(Locale.ROOT);
                 Log.i("DKIM domain=" + domain);
-
-                List<Address> addresses = new ArrayList<>();
-                Address[] ret = getReturnPath(); // RFC5321.MailFrom
-                if (ret != null)
-                    addresses.addAll(Arrays.asList(ret));
-                Address[] from = getFrom(); // RFC5322.From
-                if (from != null)
-                    addresses.addAll(Arrays.asList(from));
 
                 for (Address address : addresses) {
                     String email = ((InternetAddress) address).getAddress();
@@ -1969,6 +1969,8 @@ public class MessageHelper {
                         return new DKIMResult(true, null);
                 }
             }
+
+            // TODO: SPF alignment
 
             return new DKIMResult(false, "DKIM: d=" + records.get(0).getDToken());
         } catch (Throwable ex) {
