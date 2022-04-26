@@ -3995,6 +3995,16 @@ class Core {
             message.dmarc = MessageHelper.getAuthentication("dmarc", authentication);
             if (dkim_verify && (BuildConfig.DEBUG || !Boolean.TRUE.equals(message.dkim))) {
                 MessageHelper.DKIMResult result = helper.verifyDKIM(context);
+                if (BuildConfig.DEBUG &&
+                        message.dkim != null &&
+                        !message.dkim.equals(result.verified) &&
+                        !Boolean.FALSE.equals(message.dmarc)) {
+                    String w = "DKIM: inconsistent " + message.dkim + "/" + result.verified;
+                    if (result.warning == null)
+                        result.warning = w;
+                    else
+                        result.warning += "\n" + w;
+                }
                 message.dkim = result.verified;
                 if (result.warning != null)
                     message.warning = result.warning;

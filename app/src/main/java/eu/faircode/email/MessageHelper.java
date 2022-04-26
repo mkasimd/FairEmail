@@ -1964,13 +1964,13 @@ public class MessageHelper {
                     if (strict.value ? domain.equals(edomain) : p1.equals(p2))
                         aligned = true;
 
-                    Log.i("DKIM edomain=" + edomain + " aligned=" + aligned);
+                    Log.i("DKIM edomain=" + edomain + " aligned=" + aligned + " strict=" + strict.value);
                     if (aligned)
                         return new DKIMResult(true, null);
                 }
             }
 
-            return new DKIMResult(aligned, null);
+            return new DKIMResult(false, "DKIM: d=" + records.get(0).getDToken());
         } catch (Throwable ex) {
             Log.e("DKIM", ex);
             if (ex instanceof PermFailException)
