@@ -396,7 +396,8 @@ public class FragmentCompose extends FragmentBase {
         resolver = getContext().getContentResolver();
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
-        final boolean auto_save = prefs.getBoolean("auto_save", true);
+        final boolean auto_save_paragraph = prefs.getBoolean("auto_save_paragraph", true);
+        final boolean auto_save_dot = prefs.getBoolean("auto_save_dot", false);
         final boolean keyboard_no_fullscreen = prefs.getBoolean("keyboard_no_fullscreen", false);
         final boolean suggest_names = prefs.getBoolean("suggest_names", true);
         final boolean suggest_sent = prefs.getBoolean("suggest_sent", true);
@@ -642,10 +643,19 @@ public class FragmentCompose extends FragmentBase {
                     activity.onUserInteraction();
 
                 int index = start + before;
-                if (count - before == 1 && index > 0 && text.charAt(index) == '\n') {
-                    Log.i("Added=" + index);
-                    added = index;
-                    save = (text.charAt(index - 1) != '\n');
+
+                if (count - before == 1 && index > 0) {
+                    char c = text.charAt(index);
+                    char b = text.charAt(index - 1);
+                    save = (auto_save_paragraph && c == '\n' && b != '\n') ||
+                            (auto_save_dot && Helper.isDot(c) && !Helper.isDot(b));
+                    if (save)
+                        Log.i("Save=" + index);
+
+                    if (c == '\n') {
+                        Log.i("Added=" + index);
+                        added = index;
+                    }
                 }
             }
 
@@ -754,13 +764,6 @@ public class FragmentCompose extends FragmentBase {
 
                         if (renum)
                             StyleHelper.renumber(text, false, etBody.getContext());
-
-                        if (save && auto_save &&
-                                getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
-                            Bundle extras = new Bundle();
-                            extras.putBoolean("silent", true);
-                            onAction(R.id.action_save, extras, "paragraph");
-                        }
                     } catch (Throwable ex) {
                         Log.e(ex);
                     } finally {
@@ -797,6 +800,17 @@ public class FragmentCompose extends FragmentBase {
                         }
                     } finally {
                         translated = null;
+                    }
+
+                if (save)
+                    try {
+                        if (getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                            Bundle extras = new Bundle();
+                            extras.putBoolean("silent", true);
+                            onAction(R.id.action_save, extras, "paragraph");
+                        }
+                    } finally {
+                        save = false;
                     }
 
                 if (lp != null)
