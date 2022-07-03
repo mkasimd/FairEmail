@@ -32,3 +32,5 @@ Here are some screenshots to help you visualize these steps:
 ![Manual setup and account options](images/manualconf-01.png)
 ![Adding new IMAP / POP3 account](images/manualconf-02.png)
 ![Saving account](images/manualconf-03.png)
+
+Thanks @mkasimd for contributing this documentation.

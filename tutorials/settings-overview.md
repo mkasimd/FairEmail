@@ -154,3 +154,5 @@ If you want to enable error reporting, do as follows:
 2. Enable the option "Send error reports"
 
 More information can be found in [FAQ #104 What do I need to know about error reporting?](https://github.com/M66B/FairEmail/blob/master/FAQ.md#user-content-faq104).
+
+Thanks @mkasimd for contributing this documentation.

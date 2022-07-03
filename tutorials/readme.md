@@ -13,3 +13,5 @@ or via [this contact form](https://contact.faircode.eu/?product=fairemailsupport
 * [First Configuration](first-config.md) - A manual how to set up FairEmail to just work
 * [Settings Overview](settings-overview.md) - A manual describing where and how to find some settings & options
 * [Manual Configuration](manual-config.md) - A manual describing how to manually add your accounts (without the wizard)
+
+Thanks @mkasimd for contributing this documentation.
